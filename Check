@@ -1,0 +1,85 @@
+-- Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local userInputService = game:GetService("UserInputService")
+local flying = false
+local speed = 50
+
+local bodyVelocity
+local bodyGyro
+
+-- Function to start flying
+local function startFlying()
+	-- Create BodyVelocity
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5) -- Large force to allow flying
+	bodyVelocity.Velocity = Vector3.zero
+	bodyVelocity.P = 1250
+	bodyVelocity.Parent = humanoidRootPart
+
+	-- Create BodyGyro
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.CFrame = humanoidRootPart.CFrame
+	bodyGyro.P = 3000
+	bodyGyro.Parent = humanoidRootPart
+
+	flying = true
+end
+
+-- Function to stop flying
+local function stopFlying()
+	if bodyVelocity then bodyVelocity:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+	flying = false
+end
+
+-- Toggle flying with F
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.F then
+		if flying then
+			stopFlying()
+		else
+			startFlying()
+		end
+	end
+end)
+
+-- Control movement while flying
+game:GetService("RunService").RenderStepped:Connect(function()
+	if flying and bodyVelocity and bodyGyro then
+		local moveDirection = Vector3.zero
+
+		-- Keyboard input for movement
+		if userInputService:IsKeyDown(Enum.KeyCode.W) then
+			moveDirection += humanoidRootPart.CFrame.LookVector
+		end
+		if userInputService:IsKeyDown(Enum.KeyCode.S) then
+			moveDirection -= humanoidRootPart.CFrame.LookVector
+		end
+		if userInputService:IsKeyDown(Enum.KeyCode.A) then
+			moveDirection -= humanoidRootPart.CFrame.RightVector
+		end
+		if userInputService:IsKeyDown(Enum.KeyCode.D) then
+			moveDirection += humanoidRootPart.CFrame.RightVector
+		end
+		if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+			moveDirection += Vector3.new(0, 1, 0)
+		end
+		if userInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+			moveDirection -= Vector3.new(0, 1, 0)
+		end
+
+		-- Only apply velocity if movement is detected
+		if moveDirection.Magnitude > 0 then
+			bodyVelocity.Velocity = moveDirection.Unit * speed
+		else
+			bodyVelocity.Velocity = Vector3.zero -- Stop movement
+		end
+
+		-- Stabilize rotation
+		bodyGyro.CFrame = humanoidRootPart.CFrame
+	end
+end)
